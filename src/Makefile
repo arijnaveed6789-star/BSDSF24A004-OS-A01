@@ -7,26 +7,42 @@ OBJDIR = ../obj
 BINDIR = ../bin
 LIBDIR = ../lib
 
-LIB_NAME = $(LIBDIR)/libmyutils.a
-TARGET = $(BINDIR)/client_static
+STATIC_LIB = $(LIBDIR)/libmyutils.a
+DYNAMIC_LIB = $(LIBDIR)/libmyutils.so
+
+TARGET_STATIC = $(BINDIR)/client_static
+TARGET_DYNAMIC = $(BINDIR)/client_dynamic
 
 LIB_SOURCES = mystrfunctions.c myfilefunctions.c
 LIB_OBJECTS = $(LIB_SOURCES:%.c=$(OBJDIR)/%.o)
+PIC_OBJECTS = $(LIB_SOURCES:%.c=$(OBJDIR)/%_pic.o)
 
 MAIN_OBJ = $(OBJDIR)/main.o
 
-.PHONY: all clean
+.PHONY: all static dynamic clean
 
-all: $(TARGET)
+all: static dynamic
 
-$(LIB_NAME): $(LIB_OBJECTS)
-	$(AR) $(ARFLAGS) $(LIB_NAME) $(LIB_OBJECTS)
+static: $(TARGET_STATIC)
+dynamic: $(TARGET_DYNAMIC)
 
-$(TARGET): $(MAIN_OBJ) $(LIB_NAME)
-	$(CC) $(MAIN_OBJ) -L$(LIBDIR) -lmyutils -o $(TARGET)
+$(STATIC_LIB): $(LIB_OBJECTS)
+	$(AR) $(ARFLAGS) $(STATIC_LIB) $(LIB_OBJECTS)
+
+$(TARGET_STATIC): $(MAIN_OBJ) $(STATIC_LIB)
+	$(CC) $(MAIN_OBJ) -L$(LIBDIR) -lmyutils -o $(TARGET_STATIC)
 
 $(OBJDIR)/%.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
+$(OBJDIR)/%_pic.o: %.c
+	$(CC) $(CFLAGS) -fPIC -c $< -o $@
+
+$(DYNAMIC_LIB): $(PIC_OBJECTS)
+	$(CC) -shared -o $(DYNAMIC_LIB) $(PIC_OBJECTS)
+
+$(TARGET_DYNAMIC): $(MAIN_OBJ) $(DYNAMIC_LIB)
+	$(CC) $(MAIN_OBJ) -L$(LIBDIR) -l:libmyutils.so -o $(TARGET_DYNAMIC)
+
 clean:
-	rm -f $(OBJDIR)/*.o $(LIB_NAME) $(TARGET)
+	rm -f $(OBJDIR)/*.o $(STATIC_LIB) $(DYNAMIC_LIB) $(TARGET_STATIC) $(TARGET_DYNAMIC)
